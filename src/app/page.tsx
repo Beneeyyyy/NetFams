@@ -3,120 +3,174 @@ import Image from 'next/image';
 
 export default function Home() {
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col lg:flex-row">
-      {/* Left Side - Black */}
-      <div className="w-full lg:w-1/2 bg-black p-8 lg:p-16 flex flex-col justify-center relative overflow-hidden h-1/2 lg:h-screen">
-        {/* Decorative Elements - Dibuat lebih subtle */}
-        <div className="absolute top-10 left-10 w-20 lg:w-28 h-20 lg:h-28 bg-purple-500/5 rounded-full blur-2xl animate-pulse" />
-        <div className="absolute bottom-10 right-10 w-28 lg:w-40 h-28 lg:h-40 bg-purple-500/5 rounded-full blur-2xl animate-pulse" />
+    <div className="fixed inset-0 flex flex-col lg:flex-row">
+      {/* Animated Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-br from-purple-900/20 via-transparent to-pink-900/20" />
+        <div className="absolute w-[500px] h-[500px] bg-pink-500/10 rounded-full blur-3xl animate-pulse delay-1000 bottom-[-200px] right-[-200px]" />
+      </div>
 
-        <div className="max-w-xl z-10">
-          <h1 className="text-5xl lg:text-7xl font-bold leading-none mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-purple-300" 
-              style={{ fontFamily: 'Slackey, cursive' }}>
-            NetFams
-          </h1>
-          
-          <h2 className="text-xl lg:text-2xl text-white mb-4" 
-              style={{ fontFamily: 'Slackey, cursive' }}>
-            Create your Quality Time Together
-          </h2>
-          
-          <p className="text-sm lg:text-base text-white/80 leading-relaxed max-w-lg">
-            Transform your network management experience into a seamless family journey. 
-            We bring the comfort of home to your digital infrastructure.
-          </p>
+      {/* Left Side - Centered Content */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center relative h-1/2 lg:h-screen animate-fadeInLeft bg-black">
+        <div className="relative z-10 px-6 lg:px-12 max-w-xl mx-auto">
+          <div className="mb-8 animate-fadeInUp">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
+              <div className="w-3 h-3 rounded-full bg-pink-500 animate-pulse delay-75" />
+              <div className="w-3 h-3 rounded-full bg-purple-400 animate-pulse delay-150" />
+            </div>
+
+            <h1 className="text-5xl lg:text-6xl font-bold leading-none mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-300 to-purple-200 tracking-tight" 
+                style={{ fontFamily: 'Slackey, cursive' }}>
+              NetFams
+            </h1>
+            
+            <div className="w-20 h-1 bg-gradient-to-r from-purple-400 to-pink-300 rounded-full mb-4" />
+            
+            <h2 className="text-xl lg:text-2xl text-white/90 font-light mb-4 leading-relaxed" 
+                style={{ fontFamily: 'Inter, sans-serif' }}>
+              Create your Quality Time 
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300"> Together</span>
+            </h2>
+            
+            <p className="text-sm lg:text-base text-white/60 leading-relaxed max-w-lg font-light">
+              Transform your network management experience into a seamless family journey. 
+              We bring the comfort of home to your digital infrastructure.
+            </p>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex space-x-3 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+            <button className="group px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:scale-105 transition-all duration-300 shadow-lg shadow-purple-500/20 text-sm">
+              <span className="flex items-center space-x-2">
+                Get Started
+                <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </button>
+            <button className="px-6 py-2.5 bg-white/5 text-white rounded-lg hover:bg-white/10 transition-all duration-300 backdrop-blur-sm border border-white/10 hover:border-white/20 text-sm">
+              Learn More
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Right Side - Purple */}
-      <div className="w-full lg:w-1/2 bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900 p-8 lg:p-16 flex flex-col justify-between items-center relative h-1/2 lg:h-screen overflow-y-auto">
-        {/* Animated background circles - Dibuat lebih subtle */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 right-20 w-32 h-32 bg-purple-400/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 left-20 w-32 h-32 bg-purple-300/20 rounded-full blur-3xl animate-pulse delay-700" />
-        </div>
-
-        {/* Main Features Title */}
-        <div className="relative mb-8">
-          <h2 className="text-3xl lg:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-200 to-purple-100 text-center mb-2"
-              style={{ fontFamily: 'Slackey, cursive' }}>
+      {/* Right Side - Centered Content */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center relative h-1/2 lg:h-screen bg-gradient-to-br from-purple-900/30 to-black/80 backdrop-blur-sm animate-fadeInRight">
+        <div className="w-full max-w-xl px-6 lg:px-12">
+          <h2 className="text-2xl lg:text-3xl font-light text-white/90 text-center mb-6 animate-fadeInUp"
+              style={{ fontFamily: 'Inter, sans-serif', animationDelay: '400ms' }}>
             Main Features
           </h2>
-          <div className="w-24 h-1 bg-gradient-to-r from-purple-300 to-white mx-auto rounded-full" />
-        </div>
 
-        {/* Features Grid - Made more compact */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 w-full max-w-3xl relative z-10">
-          {/* Feature 1 */}
-          <div className="group bg-white/10 backdrop-blur-md p-6 rounded-2xl hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl border border-white/10">
-            <div className="bg-purple-500/20 w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-all duration-300">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-              </svg>
-            </div>
-            <h3 className="text-xl lg:text-2xl font-bold text-white mb-3 group-hover:text-purple-200">Family Control</h3>
-            <p className="text-white/70 group-hover:text-white/90 transition-colors duration-300">Manage network access and usage for every family member with intuitive controls.</p>
+          {/* Features Grid - More Compact */}
+          <div className="grid grid-cols-2 gap-3 w-full relative z-10">
+            {[
+              {
+                title: "Family Control",
+                description: "Manage network access for family.",
+                icon: "👨‍👩‍👧‍👦",
+                delay: "600ms"
+              },
+              {
+                title: "Safe Browsing",
+                description: "Advanced content filtering.",
+                icon: "🛡️",
+                delay: "800ms"
+              },
+              {
+                title: "Time Management",
+                description: "Smart screen time limits.",
+                icon: "⏰",
+                delay: "1000ms"
+              },
+              {
+                title: "Usage Analytics",
+                description: "Network usage insights.",
+                icon: "📊",
+                delay: "1200ms"
+              }
+            ].map((feature, index) => (
+              <div
+                key={index}
+                className="group relative animate-fadeInUp"
+                style={{ animationDelay: feature.delay }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg blur-xl -z-10" />
+                <div className="bg-white/5 backdrop-blur-sm p-3 rounded-lg hover:bg-white/10 transition-all duration-300 border border-white/10 group-hover:border-white/20 hover:-translate-y-1">
+                  <div className="text-2xl mb-2">
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-base font-medium text-white/90 mb-1">{feature.title}</h3>
+                  <p className="text-xs text-white/60 font-light">{feature.description}</p>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Feature 2 */}
-          <div className="group bg-white/10 backdrop-blur-md p-6 rounded-2xl hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl border border-white/10">
-            <div className="bg-purple-500/20 w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-all duration-300">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-              </svg>
-            </div>
-            <h3 className="text-xl lg:text-2xl font-bold text-white mb-3 group-hover:text-purple-200">Safe Browsing</h3>
-            <p className="text-white/70 group-hover:text-white/90 transition-colors duration-300">Advanced content filtering to ensure a safe online environment for your family.</p>
+          {/* Family Illustration - Adjusted Size */}
+          <div className="mt-6 w-full max-w-[120px] mx-auto relative group animate-fadeInUp" style={{ animationDelay: '1400ms' }}>
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-2xl group-hover:blur-3xl transition-all duration-500" />
+            <Image
+              src="/family.svg"
+              alt="Family Illustration"
+              width={120}
+              height={120}
+              className="w-full h-auto relative z-10 transition-transform duration-500 group-hover:scale-105"
+            />
           </div>
-
-          {/* Feature 3 */}
-          <div className="group bg-white/10 backdrop-blur-md p-6 rounded-2xl hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl border border-white/10">
-            <div className="bg-purple-500/20 w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-all duration-300">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-              </svg>
-            </div>
-            <h3 className="text-xl lg:text-2xl font-bold text-white mb-3 group-hover:text-purple-200">Time Management</h3>
-            <p className="text-white/70 group-hover:text-white/90 transition-colors duration-300">Set smart screen time limits and create healthy digital habits.</p>
-          </div>
-
-          {/* Feature 4 */}
-          <div className="group bg-white/10 backdrop-blur-md p-6 rounded-2xl hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-2 hover:shadow-2xl border border-white/10">
-            <div className="bg-purple-500/20 w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-all duration-300">
-              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-            </div>
-            <h3 className="text-xl lg:text-2xl font-bold text-white mb-3 group-hover:text-purple-200">Usage Analytics</h3>
-            <p className="text-white/70 group-hover:text-white/90 transition-colors duration-300">Detailed insights into network usage patterns and trends.</p>
-          </div>
-        </div>
-
-        {/* Buttons - Made more compact */}
-        <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 my-6">
-          <button className="px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 font-bold text-sm">
-            Let's Get Started
-          </button>
-          <button className="px-6 py-3 bg-purple-900/50 text-white rounded-lg hover:bg-purple-900/70 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 backdrop-blur-sm font-bold border border-white/10 text-sm">
-            About
-          </button>
-        </div>
-
-        {/* Family Illustration - Made smaller */}
-        <div className="flex justify-center w-full max-w-xs mt-4">
-          <Image
-            src="/family.svg"
-            alt="Family Illustration"
-            width={300}
-            height={300}
-            className="object-contain transition-transform duration-500 hover:scale-105 w-full h-auto"
-          />
         </div>
       </div>
 
-      {/* Font import */}
+      {/* Fonts & Animations */}
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Slackey&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Slackey&family=Inter:wght@300;400;500;600&display=swap');
+        
+        @keyframes fadeInLeft {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes fadeInRight {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fadeInLeft {
+          animation: fadeInLeft 0.8s ease-out forwards;
+        }
+
+        .animate-fadeInRight {
+          animation: fadeInRight 0.8s ease-out forwards;
+        }
+
+        .animate-fadeInUp {
+          animation: fadeInUp 0.8s ease-out forwards;
+        }
       `}</style>
     </div>
   );

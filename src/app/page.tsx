@@ -1,5 +1,8 @@
 'use client';
+
+import { connect } from 'http2';
 import Image from 'next/image';
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -41,14 +44,18 @@ export default function Home() {
 
           {/* CTA Buttons */}
           <div className="flex space-x-3 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+          <Link href='/connect'>
             <button className="group px-6 py-2.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:scale-105 transition-all duration-300 shadow-lg shadow-purple-500/20 text-sm">
               <span className="flex items-center space-x-2">
-                Get Started
-                <svg className="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                
+                 Get Started
+            
+                <svg className="w-10 h-10 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                 </svg>
               </span>
             </button>
+          </Link>
             <button className="px-6 py-2.5 bg-white/5 text-white rounded-lg hover:bg-white/10 transition-all duration-300 backdrop-blur-sm border border-white/10 hover:border-white/20 text-sm">
               Learn More
             </button>
@@ -57,10 +64,10 @@ export default function Home() {
       </div>
 
       {/* Right Side - Centered Content */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center relative h-1/2 lg:h-screen bg-gradient-to-br from-purple-900/30 to-black/80 backdrop-blur-sm animate-fadeInRight">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center relative h-1/2 lg:h-screen bg-gradient-to-br from-purple-800/30 to-black backdrop-blur-sm animate-fadeInRight">
         <div className="w-full max-w-xl px-6 lg:px-12">
           <h2 className="text-2xl lg:text-3xl font-light text-white/90 text-center mb-6 animate-fadeInUp"
-              style={{ fontFamily: 'Inter, sans-serif', animationDelay: '400ms' }}>
+              style={{ fontFamily: 'Slackey, sans-serif', animationDelay: '400ms' }}>
             Main Features
           </h2>
 
@@ -110,16 +117,21 @@ export default function Home() {
           </div>
 
           {/* Family Illustration - Adjusted Size */}
-          <div className="mt-6 w-full max-w-[120px] mx-auto relative group animate-fadeInUp" style={{ animationDelay: '1400ms' }}>
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-2xl group-hover:blur-3xl transition-all duration-500" />
+            <div className="flex mt-20 justify-center items-center max-w-[500px] max-h-[500px] relative">
+            {/* Glow - Dibuat lebih kecil */}
+            <div className="absolute inset-[5%] bg-gradient-to-r from-purple-900/20 to-pink-900/20 rounded-full blur-xl transition-all duration-500" />
+
+            {/* Gambar */}
             <Image
               src="/family.svg"
               alt="Family Illustration"
-              width={120}
-              height={120}
-              className="w-full h-auto relative z-10 transition-transform duration-500 group-hover:scale-105"
+              width={1000}
+              height={1000}
+              className="max-w-[400px] w-full h-auto relative"
             />
           </div>
+
+          
         </div>
       </div>
 

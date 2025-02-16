@@ -11,6 +11,7 @@ import {
     LayoutDashboard
 } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
+import SuccessModal from '../components/SuccessModal';
 
 export default function Dashboard() {
     const [devices, setDevices] = useState([
@@ -65,6 +66,9 @@ export default function Dashboard() {
         upload: ''
     });
 
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
     const openModal = (device: any, type: 'rename' | 'bandwidth' | 'block') => {
         setSelectedDevice(device);
         setModalType(type);
@@ -85,10 +89,13 @@ export default function Dashboard() {
             if (device.id === selectedDevice.id) {
                 switch (modalType) {
                     case 'rename':
+                        setSuccessMessage('Device name has been updated successfully!');
                         return { ...device, name: newName };
                     case 'bandwidth':
+                        setSuccessMessage('Device speed has been updated successfully!');
                         return { ...device, speed: `${bandwidth.download} Mbps` };
                     case 'block':
+                        setSuccessMessage('Device has been blocked successfully!');
                         return { ...device, status: 'blocked' };
                     default:
                         return device;
@@ -98,6 +105,10 @@ export default function Dashboard() {
         });
         setDevices(updatedDevices);
         setShowModal(false);
+        setShowSuccess(true);
+        setTimeout(() => {
+            setShowSuccess(false);
+        }, 2000);
     };
 
     const handleUnblock = (deviceId: number) => {
@@ -111,98 +122,100 @@ export default function Dashboard() {
     };
 
     return (
-        <div className="p-8 pt-0">
-            {/* Animated Content */}
-            <PageTransition className="flex flex-col items-center">
-                {/* Search */}
-                <div className="mb-6 w-full max-w-4xl">
-                    <div className="relative">
-                        <input 
-                            type="text"
-                            placeholder="Search device..."
-                            className="w-full pl-10 pr-4 py-5 rounded-[32px] bg-white 
-                                     border-2 border-slate-200 text-slate-600
-                                     focus:outline-none focus:border-slate-300
-                                     placeholder:text-slate-400
-                                     shadow-[0_4px_20px_rgb(0,0,0,0.03)]
-                                     hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)]
-                                     transition-all duration-300"
-                        />
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 w-5 h-5 stroke-[2.5]" />
-                    </div>
-                </div>
-
-                {/* Device List */}
-                <div className="bg-white rounded-[32px] border-2 border-slate-200 overflow-hidden w-full max-w-4xl">
-                    {/* Header Tabel */}
-                    <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-5 bg-slate-50 border-b-2 border-slate-200">
-                        <div className="text-sm font-medium text-slate-600">Device</div>
-                        <div className="text-sm font-medium text-slate-600">Speed</div>
-                        <div className="w-28 text-sm font-medium text-slate-600">Actions</div>
+        <>
+            <div className="p-8 pt-0">
+                {/* Animated Content */}
+                <PageTransition className="flex flex-col items-center">
+                    {/* Search */}
+                    <div className="mb-6 w-full max-w-4xl">
+                        <div className="relative">
+                            <input 
+                                type="text"
+                                placeholder="Search device..."
+                                className="w-full pl-10 pr-4 py-5 rounded-[32px] bg-white 
+                                         border-2 border-slate-200 text-slate-600
+                                         focus:outline-none focus:border-slate-300
+                                         placeholder:text-slate-400
+                                         shadow-[0_4px_20px_rgb(0,0,0,0.03)]
+                                         hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)]
+                                         transition-all duration-300"
+                            />
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 w-5 h-5 stroke-[2.5]" />
+                        </div>
                     </div>
 
-                    {/* Device Items */}
-                    <div className="divide-y-2 divide-slate-100">
-                        {devices.map((device) => (
-                            <div key={device.id} className="relative">
-                                <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-6
-                                              items-center hover:bg-slate-50/50 transition-colors">
-                                    <div>
-                                        <div className="font-medium text-slate-800 flex items-center gap-3">
-                                            <Laptop2 size={24} className="text-indigo-700" />
-                                            {device.name}
+                    {/* Device List */}
+                    <div className="bg-white rounded-[32px] border-2 border-slate-200 overflow-hidden w-full max-w-4xl">
+                        {/* Header Tabel */}
+                        <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-5 bg-slate-50 border-b-2 border-slate-200">
+                            <div className="text-sm font-medium text-slate-600">Device</div>
+                            <div className="text-sm font-medium text-slate-600">Speed</div>
+                            <div className="w-28 text-sm font-medium text-slate-600">Actions</div>
+                        </div>
+
+                        {/* Device Items */}
+                        <div className="divide-y-2 divide-slate-100">
+                            {devices.map((device) => (
+                                <div key={device.id} className="relative">
+                                    <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-6
+                                                  items-center hover:bg-slate-50/50 transition-colors">
+                                        <div>
+                                            <div className="font-medium text-slate-800 flex items-center gap-3">
+                                                <Laptop2 size={24} className="text-indigo-700" />
+                                                {device.name}
+                                            </div>
+                                            <div className="text-sm text-slate-500 ml-9">{device.mac}</div>
                                         </div>
-                                        <div className="text-sm text-slate-500 ml-9">{device.mac}</div>
+                                        <div className="text-slate-700 font-medium">{device.speed}</div>
+                                        <div className="flex gap-1.5 w-28 justify-end">
+                                            <button 
+                                                onClick={() => openModal(device, 'rename')}
+                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
+                                                         transition-colors"
+                                                title="Rename Device"
+                                            >
+                                                <Pencil size={20} strokeWidth={2.5} />
+                                            </button>
+                                            <button 
+                                                onClick={() => openModal(device, 'bandwidth')}
+                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
+                                                         transition-colors"
+                                                title="Set Speed"
+                                            >
+                                                <Zap size={20} strokeWidth={2.5} />
+                                            </button>
+                                            <button 
+                                                onClick={() => openModal(device, 'block')}
+                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
+                                                         transition-colors"
+                                                title="Block Device"
+                                            >
+                                                <Ban size={20} strokeWidth={2.5} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="text-slate-700 font-medium">{device.speed}</div>
-                                    <div className="flex gap-1.5 w-28 justify-end">
-                                        <button 
-                                            onClick={() => openModal(device, 'rename')}
-                                            className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
-                                                     transition-colors"
-                                            title="Rename Device"
-                                        >
-                                            <Pencil size={20} strokeWidth={2.5} />
-                                        </button>
-                                        <button 
-                                            onClick={() => openModal(device, 'bandwidth')}
-                                            className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
-                                                     transition-colors"
-                                            title="Set Speed"
-                                        >
-                                            <Zap size={20} strokeWidth={2.5} />
-                                        </button>
-                                        <button 
-                                            onClick={() => openModal(device, 'block')}
-                                            className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
-                                                     transition-colors"
-                                            title="Block Device"
-                                        >
-                                            <Ban size={20} strokeWidth={2.5} />
-                                        </button>
-                                    </div>
-                                </div>
 
-                                {/* Blocked Overlay */}
-                                {device.status === 'blocked' && (
-                                    <div className="absolute inset-0 bg-slate-50/90 backdrop-blur-[1px] 
-                                                  flex items-center justify-center">
-                                        <button 
-                                            onClick={() => handleUnblock(device.id)}
-                                            className="px-5 py-2.5 bg-white rounded-xl shadow-sm border border-rose-100
-                                                     text-rose-600 hover:bg-rose-50 transition-colors
-                                                     flex items-center gap-2"
-                                        >
-                                            <Lock size={16} />
-                                            Unblock Device
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                                    {/* Blocked Overlay */}
+                                    {device.status === 'blocked' && (
+                                        <div className="absolute inset-0 bg-slate-50/90 backdrop-blur-[1px] 
+                                                      flex items-center justify-center">
+                                            <button 
+                                                onClick={() => handleUnblock(device.id)}
+                                                className="px-5 py-2.5 bg-white rounded-xl shadow-sm border border-rose-100
+                                                         text-rose-600 hover:bg-rose-50 transition-colors
+                                                         flex items-center gap-2"
+                                            >
+                                                <Lock size={16} />
+                                                Unblock Device
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            </PageTransition>
+                </PageTransition>
+            </div>
 
             {/* Clean Modal */}
             {showModal && (
@@ -292,6 +305,12 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
-        </div>
+
+            <SuccessModal 
+                show={showSuccess}
+                message={successMessage}
+                onClose={() => setShowSuccess(false)}
+            />
+        </>
     );
 }

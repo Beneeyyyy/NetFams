@@ -12,6 +12,7 @@ export default function Blokir() {
         { id: 3, url: 'youtube.com', category: 'Hiburan', timeBlocked: 'Hari ini, 14:30' },
     ]);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const handleAddSite = () => {
         if (newSite) {
@@ -26,12 +27,21 @@ export default function Blokir() {
             ]);
             setNewSite('');
             
-            // Tampilkan modal success
+            setSuccessMessage(`${newSite} has been blocked successfully!`);
             setShowSuccess(true);
             setTimeout(() => {
                 setShowSuccess(false);
             }, 2000);
         }
+    };
+
+    const handleUnblock = (site) => {
+        setBlockedSites(blockedSites.filter(s => s.id !== site.id));
+        setSuccessMessage(`${site.url} has been unblocked successfully!`);
+        setShowSuccess(true);
+        setTimeout(() => {
+            setShowSuccess(false);
+        }, 2000);
     };
 
     return (
@@ -100,7 +110,7 @@ export default function Blokir() {
                                     </div>
                                 </div>
                                 <button 
-                                    onClick={() => setBlockedSites(blockedSites.filter(s => s.id !== site.id))}
+                                    onClick={() => handleUnblock(site)}
                                     className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
                                              transition-colors"
                                 >
@@ -120,7 +130,7 @@ export default function Blokir() {
 
             <SuccessModal 
                 show={showSuccess}
-                message="Website has been blocked successfully!"
+                message={successMessage}
                 onClose={() => setShowSuccess(false)}
             />
         </div>

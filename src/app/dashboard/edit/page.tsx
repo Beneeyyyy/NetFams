@@ -1,28 +1,82 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import PageTransition from '../../components/PageTransition';
 import SuccessModal from '../../components/SuccessModal';
 
 export default function Edit() {
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [wifiSettings, setWifiSettings] = useState({
-        ssid: 'NetFams_Home',
-        password: 'password123',
+        ssid: '',
+        password: '',
     });
     const [showSuccess, setShowSuccess] = useState(false);
 
-    const handleSave = () => {
-        // Logika penyimpanan
-        
-        // Tampilkan modal success
-        setShowSuccess(true);
-        
-        // Optional: otomatis tutup setelah beberapa detik
-        setTimeout(() => {
-            setShowSuccess(false);
-        }, 2000);
+    useEffect(() => {
+        // Ambil data WiFi saat komponen dimount
+        const fetchWiFiSettings = async () => {
+            try {
+                const credentials = JSON.parse(localStorage.getItem('mikrotikCredentials') || '{}');
+                
+                const response = await fetch('/api/mikrotik/wifi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(credentials),
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch WiFi settings');
+
+                const data = await response.json();
+                setWifiSettings({
+                    ssid: data.ssid,
+                    password: data.password
+                });
+            } catch (error) {
+                console.error('Error fetching WiFi settings:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWiFiSettings();
+    }, []);
+
+    const handleSave = async () => {
+        try {
+            const credentials = JSON.parse(localStorage.getItem('mikrotikCredentials') || '{}');
+            
+            const response = await fetch('/api/mikrotik/wifi/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...credentials,
+                    wifiSettings
+                }),
+            });
+
+            if (!response.ok) throw new Error('Failed to update WiFi settings');
+
+            setShowSuccess(true);
+            setTimeout(() => {
+                setShowSuccess(false);
+            }, 2000);
+        } catch (error) {
+            console.error('Error updating WiFi settings:', error);
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="p-8 flex justify-center items-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8">
@@ -45,15 +99,15 @@ export default function Edit() {
                         {/* Nama WiFi */}
                         <div>
                             <label className="text-base text-slate-800 font-medium block mb-3">
-                                Nama WiFi
+                                Nama WiFi (SSID)
                             </label>
                             <input 
                                 type="text"
                                 value={wifiSettings.ssid}
                                 onChange={(e) => setWifiSettings({...wifiSettings, ssid: e.target.value})}
-                                className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-slate-100
+                                className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-slate-200
                                          focus:outline-none focus:border-indigo-600/20 text-slate-600"
-                                placeholder="Contoh: NetFams_Home"
+                                placeholder="Masukkan nama WiFi"
                             />
                             <p className="text-sm text-slate-500 mt-2">
                                 Nama ini akan muncul di daftar WiFi perangkat Anda
@@ -70,7 +124,7 @@ export default function Edit() {
                                     type={showPassword ? "text" : "password"}
                                     value={wifiSettings.password}
                                     onChange={(e) => setWifiSettings({...wifiSettings, password: e.target.value})}
-                                    className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-slate-100
+                                    className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-slate-200
                                              focus:outline-none focus:border-indigo-600/20 text-slate-600"
                                     placeholder="Masukkan password WiFi"
                                 />
@@ -90,9 +144,11 @@ export default function Edit() {
 
                         {/* Save Button */}
                         <div className="pt-4">
-                            <button className="w-full py-2.5 bg-indigo-600 text-white rounded-xl 
-                                           hover:bg-indigo-700 transition-colors font-medium"
-                                           onClick={handleSave}>
+                            <button 
+                                onClick={handleSave}
+                                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 
+                                         text-white rounded-xl hover:opacity-90 transition-opacity font-medium"
+                            >
                                 Simpan Perubahan
                             </button>
                             <p className="text-sm text-slate-500 text-center mt-3">

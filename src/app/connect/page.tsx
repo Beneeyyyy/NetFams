@@ -42,6 +42,9 @@ export default function Home() {
         return;
       }
 
+      // Simpan credentials ke localStorage
+      localStorage.setItem('mikrotikCredentials', JSON.stringify(credentials));
+      
       setResult(data.data || '');
       
       setTimeout(() => {

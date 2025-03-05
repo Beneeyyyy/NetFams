@@ -31,29 +31,25 @@ export default function Home() {
         body: JSON.stringify(credentials),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data: SSHResponse = await response.json();
+      const data = await response.json();
       
-      if (!data.success) {
+      if (data.success) {
+        // Simpan status koneksi dan kredensial di localStorage
+        console.log('Saving credentials to localStorage:', credentials);
+        localStorage.setItem('mikrotikCredentials', JSON.stringify(credentials));
+        localStorage.setItem('mikrotikConnected', 'true');
+        
+        setResult(data.data || '');
+        
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1000);
+      } else {
         setError(data.error || 'Unknown error occurred');
-        return;
       }
-
-      // Simpan credentials ke localStorage
-      localStorage.setItem('mikrotikCredentials', JSON.stringify(credentials));
-      
-      setResult(data.data || '');
-      
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 1000);
-
     } catch (err) {
       console.error('Frontend error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to connect to server');
+      setError('Failed to connect to Mikrotik');
     } finally {
       setLoading(false);
     }

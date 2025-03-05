@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
     Pencil, 
     Zap, 
@@ -12,48 +12,10 @@ import {
 } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import SuccessModal from '../components/SuccessModal';
+import { MikrotikCredentials } from '@/types/mikrotiktypes';
 
 export default function Dashboard() {
-    const [devices, setDevices] = useState([
-        { 
-            id: 1, 
-            name: 'Device_1', 
-            speed: '100 Mbps', 
-            status: 'active',
-            mac: '00:11:22:33:44:55',
-            ipAddress: '192.168.1.100',
-            lastSeen: 'Active now'
-        },
-        { 
-            id: 2, 
-            name: 'Device_2', 
-            speed: '50 Mbps', 
-            status: 'active',
-            mac: '00:11:22:33:44:66',
-            ipAddress: '192.168.1.101',
-            lastSeen: 'Active now'
-        },
-        { 
-            id: 3, 
-            name: 'Smart TV', 
-            speed: '25 Mbps', 
-            status: 'limited',
-            mac: '00:11:22:33:44:77', 
-            type: 'tv',
-            ipAddress: '192.168.1.102',
-            lastSeen: '2 minutes ago'
-        },
-        { 
-            id: 4, 
-            name: 'iPad Mini', 
-            speed: '75 Mbps', 
-            status: 'active',
-            mac: '00:11:22:33:44:88', 
-            type: 'tablet',
-            ipAddress: '192.168.1.103',
-            lastSeen: 'Active now'
-        }
-    ]);
+    const [devices, setDevices] = useState<any[]>([]); // Initialize as empty array
 
     const [showModal, setShowModal] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<any>(null);
@@ -68,6 +30,11 @@ export default function Dashboard() {
 
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+
+    // Tambahkan state untuk menyimpan daftar pengguna
+    const [connectedUsers, setConnectedUsers] = useState<any[]>([]);
+
+    const [credentials, setCredentials] = useState<MikrotikCredentials | null>(null);
 
     const openModal = (device: any, type: 'rename' | 'bandwidth' | 'block') => {
         setSelectedDevice(device);
@@ -121,95 +88,140 @@ export default function Dashboard() {
         setDevices(updatedDevices);
     };
 
+    // Fungsi untuk mengambil daftar pengguna yang terhubung
+    const fetchConnectedUsers = async (credentials: MikrotikCredentials) => {
+        const response = await fetch('/api/mikrotik', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(credentials),
+        });
+
+        if (!response.ok) {
+            console.error('HTTP error:', response.status);
+            return;
+        }
+        const data = await response.json();
+        if (data.success) {
+            // Mengambil data dari output dan memformatnya
+            const users = data.data.split('\r\n').slice(1).map((line: string) => {
+                const parts = line.split(/\s+/);
+                // Filter untuk hanya menampilkan nama host dan MAC address
+                const hostName = parts[5] || 'Unknown';
+                const macAddress = parts[4];
+                // Hanya ambil data jika hostName bukan 'SERVER' atau 'HOS'
+                if (hostName !== 'SERVER' && hostName !== 'HOS') {
+                    return {
+                        name: hostName,
+                        mac: macAddress,
+                        id: parts[1],
+                    };
+                }
+                return null;
+            }).filter(user => user !== null); // Hapus entri null
+            setDevices(users);
+        } else {
+            console.error(data.error);
+        }
+    };
+
+    // Panggil fetchConnectedUsers saat komponen dimuat
+    useEffect(() => {
+        const storedCredentials = localStorage.getItem('mikrotikCredentials');
+        const isConnected = localStorage.getItem('mikrotikConnected');
+
+        if (isConnected === 'true' && storedCredentials) {
+            const credentials = JSON.parse(storedCredentials);
+            console.log('Currently connected to Mikrotik with credentials:', credentials);
+            fetchConnectedUsers(credentials); // Panggil fungsi untuk mengambil pengguna
+        } else {
+            console.log('Not connected to Mikrotik.');
+        }
+    }, []);
+
+    // Tambahkan fungsi untuk memutuskan koneksi
+    const handleDisconnect = async (macAddress: string) => {
+        if (!credentials) return;
+        const response = await fetch('/api/mikrotik/disconnect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ credentials, macAddress }),
+        });
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            fetchConnectedUsers(credentials);
+        } else {
+            console.error(data.error);
+        }
+    };
+
+    useEffect(() => {
+        // Fungsi untuk memeriksa status koneksi
+        const checkConnectionStatus = () => {
+            const isConnected = localStorage.getItem('mikrotikConnected');
+            if (isConnected === 'true') {
+                console.log('Currently connected to Mikrotik.');
+            } else {
+                console.log('Not connected to Mikrotik.');
+            }
+        };
+
+        // Set interval untuk memeriksa status setiap 3 detik
+        const intervalId = setInterval(checkConnectionStatus, 3000);
+
+        // Bersihkan interval saat komponen di-unmount
+        return () => clearInterval(intervalId);
+    }, []); // Kosongkan array dependencies agar hanya dijalankan sekali saat komponen dimuat
+
     return (
         <>
             <div className="p-8 pt-0">
-                {/* Animated Content */}
                 <PageTransition className="flex flex-col items-center">
-                    {/* Search */}
-                    <div className="mb-6 w-full max-w-4xl">
-                        <div className="relative">
-                            <input 
-                                type="text"
-                                placeholder="Search device..."
-                                className="w-full pl-10 pr-4 py-5 rounded-[32px] bg-white 
-                                         border-2 border-slate-200 text-slate-600
-                                         focus:outline-none focus:border-slate-300
-                                         placeholder:text-slate-400
-                                         shadow-[0_4px_20px_rgb(0,0,0,0.03)]
-                                         hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)]
-                                         transition-all duration-300"
-                            />
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 w-5 h-5 stroke-[2.5]" />
-                        </div>
-                    </div>
-
-                    {/* Device List */}
                     <div className="bg-white rounded-[32px] border-2 border-slate-200 overflow-hidden w-full max-w-4xl">
-                        {/* Header Tabel */}
-                        <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-5 bg-slate-50 border-b-2 border-slate-200">
-                            <div className="text-sm font-medium text-slate-600">Device</div>
-                            <div className="text-sm font-medium text-slate-600">Speed</div>
-                            <div className="w-28 text-sm font-medium text-slate-600">Actions</div>
-                        </div>
-
                         {/* Device Items */}
                         <div className="divide-y-2 divide-slate-100">
+                            <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-5 bg-slate-50 border-b-2 border-slate-200">
+                                <div className="text-sm font-medium text-slate-600">Device</div>
+                                <div className="text-sm font-medium text-slate-600">Speed</div>
+                                <div className="w-28 text-sm font-medium text-slate-600">Actions</div>
+                            </div>
                             {devices.map((device) => (
                                 <div key={device.id} className="relative">
-                                    <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-6
-                                                  items-center hover:bg-slate-50/50 transition-colors">
+                                    <div className="grid grid-cols-[2fr,auto] gap-4 px-8 py-6 items-center hover:bg-slate-50/50 transition-colors">
                                         <div>
-                                            <div className="font-medium text-slate-800 flex items-center gap-3">
-                                                <Laptop2 size={24} className="text-indigo-700" />
+                                            <div className="font-medium text-slate-800 text-lg flex items-center gap-3">
                                                 {device.name}
                                             </div>
-                                            <div className="text-sm text-slate-500 ml-9">{device.mac}</div>
+                                            <div className="text-sm text-slate-500 ml-0">{device.mac}</div>
                                         </div>
-                                        <div className="text-slate-700 font-medium">{device.speed}</div>
                                         <div className="flex gap-1.5 w-28 justify-end">
                                             <button 
                                                 onClick={() => openModal(device, 'rename')}
-                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
-                                                         transition-colors"
+                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900 transition-colors"
                                                 title="Rename Device"
                                             >
                                                 <Pencil size={20} strokeWidth={2.5} />
                                             </button>
                                             <button 
                                                 onClick={() => openModal(device, 'bandwidth')}
-                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
-                                                         transition-colors"
+                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900 transition-colors"
                                                 title="Set Speed"
                                             >
                                                 <Zap size={20} strokeWidth={2.5} />
                                             </button>
                                             <button 
                                                 onClick={() => openModal(device, 'block')}
-                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
-                                                         transition-colors"
+                                                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900 transition-colors"
                                                 title="Block Device"
                                             >
                                                 <Ban size={20} strokeWidth={2.5} />
                                             </button>
                                         </div>
                                     </div>
-
-                                    {/* Blocked Overlay */}
-                                    {device.status === 'blocked' && (
-                                        <div className="absolute inset-0 bg-slate-50/90 backdrop-blur-[1px] 
-                                                      flex items-center justify-center">
-                                            <button 
-                                                onClick={() => handleUnblock(device.id)}
-                                                className="px-5 py-2.5 bg-white rounded-xl shadow-sm border border-rose-100
-                                                         text-rose-600 hover:bg-rose-50 transition-colors
-                                                         flex items-center gap-2"
-                                            >
-                                                <Lock size={16} />
-                                                Unblock Device
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             ))}
                         </div>

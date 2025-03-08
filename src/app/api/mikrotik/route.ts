@@ -39,6 +39,9 @@ export async function POST(request: Request) {
     const queueResult = await ssh.execCommand('/queue simple print');
     console.log('Bandwidth command executed successfully.');
 
+    // Dalam fungsi POST, tambahkan log untuk melihat output mentah
+    console.log('Raw queue data:', queueResult.stdout);
+
     // Menutup koneksi SSH
     ssh.dispose();
 

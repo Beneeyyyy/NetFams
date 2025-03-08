@@ -23,6 +23,7 @@ interface Device {
     ipAddress: string;
     hasQueue: boolean;
     isBlocked?: boolean;
+    queueType?: 'default' | 'custom' | 'unmanaged';  // Updated to include 'unmanaged'
 }
 
 export default function Dashboard() {
@@ -64,46 +65,138 @@ export default function Dashboard() {
         if (type === 'rename') {
             setNewName(device.name);
         } else if (type === 'bandwidth') {
-            setBandwidth({
-                download: device.speed.split(' ')[0], // Mengambil angka dari "100 Mbps"
-                upload: '50' // Default upload speed
-            });
+            // Parse nilai speed yang ada
+            if (device.speed !== 'Unmanaged') {
+                const [download, upload] = device.speed.split('/').map(s => 
+                    parseFloat(s.replace(' Mbps', ''))
+                );
+                
+                setBandwidth({
+                    download: download.toString(),
+                    upload: upload.toString()
+                });
+            } else {
+                setBandwidth({
+                    download: '10',
+                    upload: '10'
+                });
+            }
         }
         setShowModal(true);
     };
 
-    const handleSave = () => {
-        const updatedDevices = devices.map(device => {
-            if (device.id === selectedDevice.id) {
-                switch (modalType) {
-                    case 'rename':
-                        // Simpan hostname baru ke localStorage
-                        const updatedHostnames = {
-                            ...customHostnames,
-                            [device.mac]: newName
-                        };
-                        setCustomHostnames(updatedHostnames);
-                        localStorage.setItem('customHostnames', JSON.stringify(updatedHostnames));
-                        setSuccessMessage('Device name has been updated successfully!');
-                        return { ...device, name: newName };
-                    case 'bandwidth':
-                        setSuccessMessage('Device speed has been updated successfully!');
-                        return { ...device, speed: `${bandwidth.download} Mbps` };
-                    case 'block':
-                        setSuccessMessage('Device has been blocked successfully!');
-                        return { ...device, status: 'blocked' };
-                    default:
+    const handleSave = async () => {
+        try {
+            switch (modalType) {
+                case 'rename':
+                    // Simpan hostname baru ke localStorage
+                    const updatedHostnames = {
+                        ...customHostnames,
+                        [selectedDevice.mac]: newName
+                    };
+                    setCustomHostnames(updatedHostnames);
+                    localStorage.setItem('customHostnames', JSON.stringify(updatedHostnames));
+                    
+                    // Update devices state
+                    const updatedDevicesRename = devices.map(device => {
+                        if (device.mac === selectedDevice.mac) {
+                            return { ...device, name: newName };
+                        }
                         return device;
-                }
+                    });
+                    setDevices(updatedDevicesRename);
+                    setSuccessMessage('Device name has been updated successfully!');
+                    break;
+
+                case 'bandwidth':
+                    if (!credentials) {
+                        throw new Error('No credentials found');
+                    }
+
+                    if (!selectedDevice?.ipAddress) {
+                        throw new Error('No IP address found for device');
+                    }
+
+                    // Validate bandwidth values
+                    const downloadSpeed = parseFloat(bandwidth.download);
+                    const uploadSpeed = parseFloat(bandwidth.upload);
+
+                    if (isNaN(downloadSpeed) || isNaN(uploadSpeed)) {
+                        throw new Error('Invalid bandwidth values');
+                    }
+
+                    if (downloadSpeed < 0.1 || uploadSpeed < 0.1) {
+                        throw new Error('Bandwidth values must be at least 0.1 Mbps');
+                    }
+
+                    if (downloadSpeed > 100 || uploadSpeed > 100) {
+                        throw new Error('Bandwidth values cannot exceed 100 Mbps');
+                    }
+
+                    console.log('Sending bandwidth update:', {
+                        ipAddress: selectedDevice.ipAddress,
+                        download: downloadSpeed,
+                        upload: uploadSpeed
+                    });
+
+                    const response = await fetch('/api/mikrotik/bandwidth', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            credentials,
+                            macAddress: selectedDevice.mac,
+                            ipAddress: selectedDevice.ipAddress,
+                            download: downloadSpeed,
+                            upload: uploadSpeed
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to update bandwidth');
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Update devices state dengan menunjukkan queue custom
+                        const updatedDevicesBandwidth = devices.map(device => {
+                            if (device.mac === selectedDevice.mac) {
+                                return { 
+                                    ...device, 
+                                    speed: `${downloadSpeed}/${uploadSpeed} Mbps`,
+                                    hasQueue: true,
+                                    queueType: 'custom' as const // Use const assertion
+                                };
+                            }
+                            return device;
+                        });
+                        setDevices(updatedDevicesBandwidth);
+                        setSuccessMessage(`Bandwidth updated to ${downloadSpeed}/${uploadSpeed} Mbps`);
+                    } else {
+                        throw new Error(data.error || 'Failed to update bandwidth');
+                    }
+                    break;
+
+                case 'block':
+                    setSuccessMessage('Device has been blocked successfully!');
+                    return { ...selectedDevice, status: 'blocked' };
+
+                default:
+                    break;
             }
-            return device;
-        });
-        setDevices(updatedDevices);
-        setShowModal(false);
-        setShowSuccess(true);
-        setTimeout(() => {
-            setShowSuccess(false);
-        }, 2000);
+            
+            setShowModal(false);
+            setShowSuccess(true);
+            setTimeout(() => {
+                setShowSuccess(false);
+            }, 2000);
+        } catch (error) {
+            console.error('Error in handleSave:', error);
+            alert(error instanceof Error ? error.message : 'Failed to save changes. Please try again.');
+        }
     };
 
     // Tambahkan fungsi untuk handle block/unblock
@@ -223,10 +316,33 @@ export default function Dashboard() {
                             // Jika semua data sudah ada, tambahkan ke Map
                             if (currentEntry.name && currentEntry.target) {
                                 console.log(`Adding queue entry: ${currentEntry.name}, ${currentEntry.target}, ${currentEntry.maxLimit}`);
-                                queueMap.set(currentEntry.target.toLowerCase(), {
-                                    name: currentEntry.name,
-                                    maxLimit: currentEntry.maxLimit
-                                });
+                                // Jika sudah ada entry untuk target yang sama, cek prioritas nama
+                                const existingEntry = queueMap.get(currentEntry.target.toLowerCase());
+                                if (existingEntry) {
+                                    // Jika entry yang ada bukan change_ dan entry baru adalah change_, update
+                                    if (!existingEntry.name.startsWith('change_') && currentEntry.name.startsWith('change_')) {
+                                        queueMap.set(currentEntry.target.toLowerCase(), {
+                                            name: currentEntry.name,
+                                            maxLimit: currentEntry.maxLimit
+                                        });
+                                    }
+                                    // Jika keduanya sama-sama change_ atau client_, gunakan yang terakhir
+                                    else if (
+                                        (existingEntry.name.startsWith('change_') && currentEntry.name.startsWith('change_')) ||
+                                        (existingEntry.name.startsWith('client_') && currentEntry.name.startsWith('client_'))
+                                    ) {
+                                        queueMap.set(currentEntry.target.toLowerCase(), {
+                                            name: currentEntry.name,
+                                            maxLimit: currentEntry.maxLimit
+                                        });
+                                    }
+                                } else {
+                                    // Jika belum ada entry, tambahkan
+                                    queueMap.set(currentEntry.target.toLowerCase(), {
+                                        name: currentEntry.name,
+                                        maxLimit: currentEntry.maxLimit
+                                    });
+                                }
                                 // Reset currentEntry
                                 currentEntry = {
                                     name: '',
@@ -300,14 +416,18 @@ export default function Dashboard() {
                     
                     // Cari data bandwidth dari queue
                     let speed = '';
+                    let queueType: 'default' | 'custom' | 'unmanaged' | undefined;
                     
                     // Coba cari berdasarkan IP address di queue
                     if (queueMap.has(ipAddress.toLowerCase())) {
                         const queueInfo = queueMap.get(ipAddress.toLowerCase());
                         speed = queueInfo.maxLimit;
+                        // Deteksi tipe queue berdasarkan nama
+                        queueType = queueInfo.name.startsWith('change_') ? 'custom' : 'default';
                     } else {
                         // Jika tidak ada di queue, tandai sebagai "Unmanaged"
                         speed = 'Unmanaged';
+                        queueType = 'unmanaged';
                     }
                     
                     // Hanya ambil data jika hostName bukan 'SERVER' atau 'HOS'
@@ -319,11 +439,12 @@ export default function Dashboard() {
                             speed: speed,
                             ipAddress: ipAddress,
                             hasQueue: queueMap.has(ipAddress.toLowerCase()),
+                            queueType: queueType,
                             isBlocked: blockedMacs.includes(macAddress)
                         };
                     }
                     return null;
-                }).filter((user: { name: string; mac: string; id: string; speed: string; ipAddress: string; hasQueue: boolean } | null) => user !== null); // Hapus entri null
+                }).filter((user: Device | null) => user !== null);
                 setDevices(users);
             } else {
                 console.error(data.error);
@@ -454,18 +575,13 @@ export default function Dashboard() {
                                                 <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                                                     device.isBlocked 
                                                         ? 'bg-red-100/50 text-red-800' 
-                                                        : 'bg-green-100 text-green-800'
+                                                        : device.queueType === 'custom'
+                                                            ? 'bg-purple-100 text-purple-800'
+                                                            : device.queueType === 'default'
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-gray-100 text-gray-800'
                                                 }`}>
-                                                    Queue
-                                                </span>
-                                            )}
-                                            {!device.hasQueue && (
-                                                <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                    device.isBlocked 
-                                                        ? 'bg-red-100/50 text-red-800' 
-                                                        : 'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                    Est.
+                                                    {device.queueType === 'custom' ? 'Custom' : device.queueType === 'default' ? 'Default' : 'Unmanaged'}
                                                 </span>
                                             )}
                                         </div>
@@ -486,6 +602,8 @@ export default function Dashboard() {
                                                 className={`p-2.5 rounded-xl transition-all duration-200 ${
                                                     device.isBlocked
                                                         ? 'hover:bg-red-100/50 text-red-600'
+                                                        : device.queueType === 'custom'
+                                                            ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
                                                         : 'hover:bg-slate-100 text-slate-900'
                                                 }`}
                                                 title="Set Speed"
@@ -546,13 +664,17 @@ export default function Dashboard() {
                                             type="number"
                                             value={bandwidth.download}
                                             onChange={(e) => setBandwidth({...bandwidth, download: e.target.value})}
-                                            min="1"
+                                            min="0.1"
                                             max="100"
+                                            step="0.1"
                                             className="w-full px-4 py-3 rounded-xl border-2 border-[#1A1F2E]/10 
                                                      focus:outline-none focus:border-purple-500 text-base
                                                      transition-colors"
-                                            placeholder="Contoh: 50"
+                                            placeholder="Contoh: 1.5"
                                         />
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Minimal 0.1 Mbps, maksimal 100 Mbps
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="text-sm text-[#1A1F2E]/70 block mb-2">
@@ -562,13 +684,17 @@ export default function Dashboard() {
                                             type="number"
                                             value={bandwidth.upload}
                                             onChange={(e) => setBandwidth({...bandwidth, upload: e.target.value})}
-                                            min="1"
+                                            min="0.1"
                                             max="100"
+                                            step="0.1"
                                             className="w-full px-4 py-3 rounded-xl border-2 border-[#1A1F2E]/10 
                                                      focus:outline-none focus:border-purple-500 text-base
                                                      transition-colors"
-                                            placeholder="Contoh: 25"
+                                            placeholder="Contoh: 1"
                                         />
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            Minimal 0.1 Mbps, maksimal 100 Mbps
+                                        </p>
                                     </div>
                                 </div>
                             </>

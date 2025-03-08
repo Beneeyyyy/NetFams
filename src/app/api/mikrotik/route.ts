@@ -27,6 +27,18 @@ export async function POST(request: Request) {
         console.error('Error saat mengeksekusi perintah:', result.stderr);
     }
 
+    // Mendapatkan informasi bandwidth pengguna
+    console.log('Executing command to get bandwidth information...');
+    // Gunakan interface monitor-traffic untuk mendapatkan data realtime
+    const bandwidthResult = await ssh.execCommand('/interface monitor-traffic ether2 once');
+    
+    // Dapatkan juga data dari interface statistics
+    const interfaceStatsResult = await ssh.execCommand('/interface print stats');
+    
+    // Dapatkan data dari queue simple
+    const queueResult = await ssh.execCommand('/queue simple print');
+    console.log('Bandwidth command executed successfully.');
+
     // Menutup koneksi SSH
     ssh.dispose();
 
@@ -34,6 +46,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       data: result.stdout || 'No output received',
+      bandwidthData: bandwidthResult.stdout || 'No bandwidth data received',
+      interfaceStats: interfaceStatsResult.stdout || 'No interface stats received',
+      queueData: queueResult.stdout || 'No queue data received',
     });
 
   } catch (error) {

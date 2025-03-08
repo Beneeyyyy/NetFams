@@ -104,23 +104,110 @@ export default function Dashboard() {
         }
         const data = await response.json();
         if (data.success) {
+            // Mengambil data dari queue simple
+            const queueData = data.queueData.split('\r\n');
+            const queueMap = new Map();
+            
+            // Parsing data queue simple
+            queueData.forEach((line: string) => {
+                const parts = line.split(/\s+/);
+                if (parts.length > 6) {
+                    const name = parts[2]; // Nama queue
+                    const target = parts[4]; // Target IP
+                    const maxLimit = parts[6]; // Max-limit (rx/tx)
+                    
+                    if (name && target && maxLimit) {
+                        queueMap.set(target.toLowerCase(), {
+                            name: name,
+                            maxLimit: maxLimit
+                        });
+                    }
+                }
+            });
+            
+            // Mengambil data interface statistics
+            const interfaceStats = data.interfaceStats.split('\r\n');
+            const interfaceMap = new Map();
+            
+            // Parsing data interface statistics
+            interfaceStats.forEach((line: string) => {
+                const parts = line.split(/\s+/);
+                if (parts.length > 8) {
+                    const name = parts[1]; // Nama interface
+                    const rxBytes = parts[3]; // Rx bytes
+                    const txBytes = parts[5]; // Tx bytes
+                    if (name) {
+                        interfaceMap.set(name.toLowerCase(), { rx: rxBytes, tx: txBytes });
+                    }
+                }
+            });
+            
+            // Mengambil data bandwidth dari monitor-traffic
+            const bandwidthData = data.bandwidthData.split('\r\n');
+            let totalRx = '0';
+            let totalTx = '0';
+            
+            // Parsing data monitor-traffic
+            bandwidthData.forEach((line: string) => {
+                if (line.includes('rx-bits-per-second')) {
+                    const parts = line.split(':');
+                    if (parts.length > 1) {
+                        totalRx = (parseInt(parts[1].trim()) / 1000000).toFixed(2) + ' Mbps'; // Convert to Mbps
+                    }
+                }
+                if (line.includes('tx-bits-per-second')) {
+                    const parts = line.split(':');
+                    if (parts.length > 1) {
+                        totalTx = (parseInt(parts[1].trim()) / 1000000).toFixed(2) + ' Mbps'; // Convert to Mbps
+                    }
+                }
+            });
+            
             // Mengambil data dari output dan memformatnya
             const users = data.data.split('\r\n').slice(1).map((line: string) => {
                 const parts = line.split(/\s+/);
                 // Filter untuk hanya menampilkan nama host dan MAC address
                 const hostName = parts[5] || 'Unknown';
                 const macAddress = parts[4];
+                const ipAddress = parts[3] || '';
+                
+                // Cari data bandwidth dari queue
+                let speed = '';
+                
+                // Coba cari berdasarkan IP address di queue
+                if (queueMap.has(ipAddress.toLowerCase())) {
+                    const queueInfo = queueMap.get(ipAddress.toLowerCase());
+                    speed = queueInfo.maxLimit;
+                } else {
+                    // Jika tidak ada di queue, gunakan perkiraan dari total bandwidth
+                    const totalUsers = data.data.split('\r\n').length - 1;
+                    const rxPerUser = totalRx ? (parseFloat(totalRx) / totalUsers).toFixed(2) + ' Mbps' : '0 Mbps';
+                    const txPerUser = totalTx ? (parseFloat(totalTx) / totalUsers).toFixed(2) + ' Mbps' : '0 Mbps';
+                    speed = `${rxPerUser}/${txPerUser} (est.)`;
+                }
+                
                 // Hanya ambil data jika hostName bukan 'SERVER' atau 'HOS'
                 if (hostName !== 'SERVER' && hostName !== 'HOS') {
                     return {
                         name: hostName,
                         mac: macAddress,
                         id: parts[1],
+                        speed: speed,
+                        ipAddress: ipAddress,
+                        hasQueue: queueMap.has(ipAddress.toLowerCase())
                     };
                 }
                 return null;
-            }).filter(user => user !== null); // Hapus entri null
+            }).filter((user: { name: string; mac: string; id: string; speed: string; ipAddress: string; hasQueue: boolean } | null) => user !== null); // Hapus entri null
             setDevices(users);
+            
+            // Set interval untuk refresh data setiap 10 detik
+            const intervalId = setInterval(() => {
+                fetchConnectedUsers(credentials);
+            }, 10000);
+            
+            // Clear interval saat komponen unmount
+            return () => clearInterval(intervalId);
         } else {
             console.error(data.error);
         }
@@ -130,14 +217,24 @@ export default function Dashboard() {
     useEffect(() => {
         const storedCredentials = localStorage.getItem('mikrotikCredentials');
         const isConnected = localStorage.getItem('mikrotikConnected');
+        let cleanupFunction: (() => void) | undefined;
 
         if (isConnected === 'true' && storedCredentials) {
             const credentials = JSON.parse(storedCredentials);
             console.log('Currently connected to Mikrotik with credentials:', credentials);
-            fetchConnectedUsers(credentials); // Panggil fungsi untuk mengambil pengguna
+            
+            // Panggil fungsi untuk mengambil pengguna
+            cleanupFunction = fetchConnectedUsers(credentials) as unknown as (() => void);
         } else {
             console.log('Not connected to Mikrotik.');
         }
+
+        // Cleanup interval saat komponen unmount
+        return () => {
+            if (cleanupFunction) {
+                cleanupFunction();
+            }
+        };
     }, []);
 
     // Tambahkan fungsi untuk memutuskan koneksi
@@ -191,12 +288,25 @@ export default function Dashboard() {
                             </div>
                             {devices.map((device) => (
                                 <div key={device.id} className="relative">
-                                    <div className="grid grid-cols-[2fr,auto] gap-4 px-8 py-6 items-center hover:bg-slate-50/50 transition-colors">
+                                    <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-6 items-center hover:bg-slate-50/50 transition-colors">
                                         <div>
                                             <div className="font-medium text-slate-800 text-lg flex items-center gap-3">
                                                 {device.name}
                                             </div>
                                             <div className="text-sm text-slate-500 ml-0">{device.mac}</div>
+                                        </div>
+                                        <div className="text-slate-700 font-medium flex items-center">
+                                            {device.speed}
+                                            {device.hasQueue && (
+                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                    Queue
+                                                </span>
+                                            )}
+                                            {!device.hasQueue && (
+                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                                    Est.
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="flex gap-1.5 w-28 justify-end">
                                             <button 

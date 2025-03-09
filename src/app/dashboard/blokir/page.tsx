@@ -1,47 +1,139 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PageTransition from '../../components/PageTransition';
 import { Ban } from 'lucide-react';
 import SuccessModal from '../../components/SuccessModal';
 
+interface BlockedSite {
+    id: number;
+    url: string;
+    timeBlocked: string;
+}
+
 export default function Blokir() {
     const [newSite, setNewSite] = useState('');
-    const [blockedSites, setBlockedSites] = useState([
-        { id: 1, url: 'tiktok.com', category: 'Sosial Media', timeBlocked: 'Hari ini, 14:30' },
-        { id: 2, url: 'facebook.com', category: 'Sosial Media', timeBlocked: 'Hari ini, 14:30' },
-        { id: 3, url: 'youtube.com', category: 'Hiburan', timeBlocked: 'Hari ini, 14:30' },
-    ]);
+    const [blockedSites, setBlockedSites] = useState<BlockedSite[]>([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleAddSite = () => {
-        if (newSite) {
-            setBlockedSites([
-                {
-                    id: blockedSites.length + 1,
-                    url: newSite,
-                    category: 'Lainnya',
-                    timeBlocked: 'Baru saja'
+    // Load blocked sites on component mount
+    useEffect(() => {
+        const loadBlockedSites = async () => {
+            const storedCredentials = localStorage.getItem('mikrotikCredentials');
+            if (!storedCredentials) return;
+
+            try {
+                const response = await fetch('/api/mikrotik/check-blocked-sites', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: storedCredentials
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    const sites = data.blockedSites.map((url: string, index: number) => ({
+                        id: index + 1,
+                        url,
+                        timeBlocked: new Date().toLocaleString()
+                    }));
+                    setBlockedSites(sites);
+                }
+            } catch (error) {
+                console.error('Failed to load blocked sites:', error);
+            }
+        };
+
+        loadBlockedSites();
+    }, []);
+
+    const handleAddSite = async () => {
+        if (!newSite) return;
+
+        const storedCredentials = localStorage.getItem('mikrotikCredentials');
+        if (!storedCredentials) {
+            alert('Please connect to Mikrotik first');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/mikrotik/website-block', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
                 },
-                ...blockedSites
-            ]);
-            setNewSite('');
-            
-            setSuccessMessage(`${newSite} has been blocked successfully!`);
-            setShowSuccess(true);
-            setTimeout(() => {
-                setShowSuccess(false);
-            }, 2000);
+                body: JSON.stringify({
+                    credentials: JSON.parse(storedCredentials),
+                    domain: newSite,
+                    action: 'block'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setBlockedSites([
+                    {
+                        id: blockedSites.length + 1,
+                        url: newSite,
+                        timeBlocked: new Date().toLocaleString()
+                    },
+                    ...blockedSites
+                ]);
+                setNewSite('');
+                setSuccessMessage(`${newSite} has been blocked successfully!`);
+                setShowSuccess(true);
+                setTimeout(() => {
+                    setShowSuccess(false);
+                }, 2000);
+            } else {
+                alert(data.error || 'Failed to block website');
+            }
+        } catch (error) {
+            console.error('Error blocking site:', error);
+            alert('Failed to block website. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    const handleUnblock = (site) => {
-        setBlockedSites(blockedSites.filter(s => s.id !== site.id));
-        setSuccessMessage(`${site.url} has been unblocked successfully!`);
-        setShowSuccess(true);
-        setTimeout(() => {
-            setShowSuccess(false);
-        }, 2000);
+    const handleUnblock = async (site: BlockedSite) => {
+        const storedCredentials = localStorage.getItem('mikrotikCredentials');
+        if (!storedCredentials) return;
+
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/mikrotik/website-block', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    credentials: JSON.parse(storedCredentials),
+                    domain: site.url,
+                    action: 'unblock'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setBlockedSites(blockedSites.filter(s => s.id !== site.id));
+                setSuccessMessage(`${site.url} has been unblocked successfully!`);
+                setShowSuccess(true);
+                setTimeout(() => {
+                    setShowSuccess(false);
+                }, 2000);
+            } else {
+                alert(data.error || 'Failed to unblock website');
+            }
+        } catch (error) {
+            console.error('Error unblocking site:', error);
+            alert('Failed to unblock website. Please try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -73,17 +165,20 @@ export default function Blokir() {
                                      hover:shadow-[0_4px_20px_rgb(0,0,0,0.06)]
                                      transition-all duration-300"
                             placeholder="Masukkan alamat website (contoh: facebook.com)"
+                            disabled={isLoading}
                         />
                         <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 font-medium">
                             www.
                         </div>
                         <button 
                             onClick={handleAddSite}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 px-4 py-2
-                                     bg-slate-900 text-white rounded-2xl hover:bg-slate-800
-                                     transition-colors text-sm font-medium"
+                            disabled={isLoading}
+                            className={`absolute right-3 top-1/2 -translate-y-1/2 px-4 py-2
+                                     bg-slate-900 text-white rounded-2xl 
+                                     ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-800'}
+                                     transition-colors text-sm font-medium`}
                         >
-                            Tambah
+                            {isLoading ? 'Processing...' : 'Tambah'}
                         </button>
                     </div>
                 </div>
@@ -106,13 +201,14 @@ export default function Blokir() {
                                 <div>
                                     <h3 className="text-slate-800 font-medium">{site.url}</h3>
                                     <div className="text-sm text-slate-500 mt-1">
-                                        {site.category} • Diblokir {site.timeBlocked}
+                                        Diblokir {site.timeBlocked}
                                     </div>
                                 </div>
                                 <button 
                                     onClick={() => handleUnblock(site)}
-                                    className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
-                                             transition-colors"
+                                    disabled={isLoading}
+                                    className={`p-2.5 rounded-xl hover:bg-slate-100 text-slate-900
+                                             transition-colors ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <Ban size={20} strokeWidth={2.5} />
                                 </button>

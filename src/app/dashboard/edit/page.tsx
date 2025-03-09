@@ -12,30 +12,41 @@ export default function Edit() {
         password: '',
     });
     const [showSuccess, setShowSuccess] = useState(false);
+    const [error, setError] = useState('');
 
     useEffect(() => {
-        // Ambil data WiFi saat komponen dimount
         const fetchWiFiSettings = async () => {
             try {
-                const credentials = JSON.parse(localStorage.getItem('mikrotikCredentials') || '{}');
-                
-                const response = await fetch('/api/mikrotik/wifi', {
+                const credentials = localStorage.getItem('mikrotikCredentials');
+                if (!credentials) {
+                    throw new Error('No credentials found');
+                }
+
+                const response = await fetch('/api/mikrotik', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(credentials),
+                    body: credentials
                 });
 
-                if (!response.ok) throw new Error('Failed to fetch WiFi settings');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch settings');
+                }
 
                 const data = await response.json();
-                setWifiSettings({
-                    ssid: data.ssid,
-                    password: data.password
-                });
+                if (data.success && data.wirelessSettings) {
+                    setWifiSettings({
+                        ssid: data.wirelessSettings.ssid || '',
+                        password: data.wirelessSettings.password || ''
+                    });
+                    setError('');
+                } else {
+                    setError('Could not retrieve wireless settings');
+                }
             } catch (error) {
                 console.error('Error fetching WiFi settings:', error);
+                setError(error instanceof Error ? error.message : 'Failed to fetch settings');
             } finally {
                 setLoading(false);
             }
@@ -46,27 +57,38 @@ export default function Edit() {
 
     const handleSave = async () => {
         try {
-            const credentials = JSON.parse(localStorage.getItem('mikrotikCredentials') || '{}');
-            
-            const response = await fetch('/api/mikrotik/wifi/update', {
+            setLoading(true);
+            const credentials = localStorage.getItem('mikrotikCredentials');
+            if (!credentials) {
+                throw new Error('No credentials found');
+            }
+
+            const response = await fetch('/api/mikrotik/wifi', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    ...credentials,
-                    wifiSettings
+                    credentials: JSON.parse(credentials),
+                    settings: wifiSettings
                 }),
             });
 
-            if (!response.ok) throw new Error('Failed to update WiFi settings');
-
-            setShowSuccess(true);
-            setTimeout(() => {
-                setShowSuccess(false);
-            }, 2000);
+            const data = await response.json();
+            if (data.success) {
+                setShowSuccess(true);
+                setError('');
+                setTimeout(() => {
+                    setShowSuccess(false);
+                }, 2000);
+            } else {
+                throw new Error(data.error || 'Failed to update settings');
+            }
         } catch (error) {
             console.error('Error updating WiFi settings:', error);
+            setError(error instanceof Error ? error.message : 'Failed to update settings');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -90,6 +112,13 @@ export default function Edit() {
                 </p>
             </div>
 
+            {/* Error Message */}
+            {error && (
+                <div className="mb-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700">
+                    {error}
+                </div>
+            )}
+
             {/* Animated Content */}
             <PageTransition className="flex flex-col items-center">
                 <div className="w-full max-w-4xl bg-white rounded-[32px] border-2 border-slate-200 p-8
@@ -108,6 +137,7 @@ export default function Edit() {
                                 className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-slate-200
                                          focus:outline-none focus:border-indigo-600/20 text-slate-600"
                                 placeholder="Masukkan nama WiFi"
+                                disabled={loading}
                             />
                             <p className="text-sm text-slate-500 mt-2">
                                 Nama ini akan muncul di daftar WiFi perangkat Anda
@@ -127,12 +157,14 @@ export default function Edit() {
                                     className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-slate-200
                                              focus:outline-none focus:border-indigo-600/20 text-slate-600"
                                     placeholder="Masukkan password WiFi"
+                                    disabled={loading}
                                 />
                                 <button 
                                     onClick={() => setShowPassword(!showPassword)}
                                     type="button"
                                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400
                                              hover:text-slate-600 transition-colors"
+                                    disabled={loading}
                                 >
                                     {showPassword ? '🔒' : '👁️'}
                                 </button>
@@ -146,10 +178,12 @@ export default function Edit() {
                         <div className="pt-4">
                             <button 
                                 onClick={handleSave}
-                                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 
-                                         text-white rounded-xl hover:opacity-90 transition-opacity font-medium"
+                                disabled={loading}
+                                className={`w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 
+                                         text-white rounded-xl transition-all font-medium
+                                         ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
                             >
-                                Simpan Perubahan
+                                {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
                             </button>
                             <p className="text-sm text-slate-500 text-center mt-3">
                                 WiFi akan terputus sebentar saat menyimpan perubahan
@@ -162,7 +196,7 @@ export default function Edit() {
             {/* Success Modal */}
             <SuccessModal 
                 show={showSuccess}
-                message="WiFi settings have been updated successfully!"
+                message="Pengaturan WiFi berhasil diperbarui!"
                 onClose={() => setShowSuccess(false)}
             />
         </div>

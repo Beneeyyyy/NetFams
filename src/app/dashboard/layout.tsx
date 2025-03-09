@@ -1,12 +1,13 @@
 'use client'
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
     LayoutDashboard, 
     Settings, 
-    Ban
+    Ban,
+    LogOut
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -15,6 +16,7 @@ export default function DashboardLayout({
     children: React.ReactNode
 }) {
     const pathname = usePathname();
+    const router = useRouter();
 
     const navItems = [
         { 
@@ -33,6 +35,12 @@ export default function DashboardLayout({
             path: '/dashboard/blokir' 
         },
     ];
+
+    const handleDisconnect = () => {
+        localStorage.removeItem('mikrotikCredentials');
+        localStorage.removeItem('mikrotikConnected');
+        router.push('/');
+    };
 
     return (
         <div className="h-screen bg-[#F5EFE6] flex">
@@ -97,6 +105,29 @@ export default function DashboardLayout({
                             </div>
                         </Link>
                     ))}
+                </div>
+
+                {/* Tambahkan tombol disconnect di bagian bawah sidebar */}
+                <div className="mt-auto mb-8 ml-6">
+                    <div className="relative group my-1">
+                        <div className="absolute inset-0 rounded-l-full transition-all duration-500 ease-out 
+                                      opacity-0 group-hover:opacity-100 bg-red-500/10" />
+                        <button
+                            onClick={handleDisconnect}
+                            className="relative z-10 w-[19rem] h-[4.5rem] pl-8
+                                     text-left rounded-l-full
+                                     transition-all duration-500 ease-out
+                                     flex items-center text-red-400
+                                     group-hover:pl-10 group-hover:text-red-500"
+                        >
+                            <span className="transition-all duration-500 ease-out group-hover:scale-110">
+                                <LogOut size={22} />
+                            </span>
+                            <span className="font-medium text-[15px] ml-4">
+                                Disconnect Router
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

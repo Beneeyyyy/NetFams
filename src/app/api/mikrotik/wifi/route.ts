@@ -1,31 +1,50 @@
+import { NextResponse } from 'next/server';
 import { NodeSSH } from 'node-ssh';
+import type { MikrotikCredentials } from '@/types/mikrotiktypes';
 
 export async function POST(request: Request) {
-    const credentials = await request.json();
-    const ssh = new NodeSSH();
-    
     try {
+        const { credentials, settings } = await request.json();
+        const ssh = new NodeSSH();
+
         await ssh.connect({
             host: credentials.host,
             username: credentials.username,
-            password: credentials.password
+            password: credentials.password,
+            port: 22,
+            readyTimeout: 5000,
         });
 
-        // Command untuk mengambil SSID dan password WiFi dari Mikrotik
-        const { stdout: ssid } = await ssh.execCommand('/interface wireless get numbers=0 ssid');
-        const { stdout: password } = await ssh.execCommand('/interface wireless security-profiles get numbers=0 wpa2-pre-shared-key');
-        
-        return Response.json({
-            success: true,
-            ssid: ssid.trim(),
-            password: password.trim()
-        });
-    } catch (error) {
-        return Response.json({
-            success: false,
-            error: "Failed to fetch WiFi settings"
-        });
-    } finally {
+        console.log('Updating wireless settings...');
+
+        // Update SSID
+        const ssidResult = await ssh.execCommand(`/interface wireless set numbers=0 ssid="${settings.ssid}"`);
+        if (ssidResult.stderr) {
+            throw new Error('Failed to update SSID: ' + ssidResult.stderr);
+        }
+
+        // Update password
+        const passwordResult = await ssh.execCommand(`/interface wireless security-profiles set numbers=0 wpa2-pre-shared-key="${settings.password}"`);
+        if (passwordResult.stderr) {
+            throw new Error('Failed to update password: ' + passwordResult.stderr);
+        }
+
+        // Verify changes
+        const verifySSID = await ssh.execCommand('/interface wireless print value-list');
+        const verifyPassword = await ssh.execCommand('/interface wireless security-profiles print value-list');
+
         ssh.dispose();
+
+        return NextResponse.json({
+            success: true,
+            message: 'Wireless settings updated successfully'
+        });
+
+    } catch (error) {
+        console.error('WiFi update error:', error);
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update wireless settings'
+        }, { status: 500 });
     }
 } 

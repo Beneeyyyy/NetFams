@@ -49,13 +49,33 @@ export default function DashboardLayout({
                           shadow-[4px_0_30px_rgba(0,0,0,0.3)]">
                 {/* Logo */}
                 <div className="h-1/4 flex justify-center items-center border-b-2 border-white/10 rounded-tr-[6rem] shadow-[0_20px_30px_rgba(0,0,0,0.3)]">
-                    <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
-                        <div className="w-16 h-16 bg-[#1A1F2E] rounded-full flex items-center justify-center">
-                            <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                                LOGO
-                            </span>
+                <div className="h-1/4 flex justify-center items-center">
+                    <div className="relative group">
+                        <div className="w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center 
+                                    transition-all duration-300 ease-out group-hover:scale-105 group-hover:shadow-[0_0_30px_rgba(236,72,153,0.3)]">
+                            <div className="w-28 h-28 bg-[#1A1F2E] rounded-full flex items-center justify-center
+                                        transition-all duration-300 ease-out group-hover:bg-[#232936]">
+                                <motion.img 
+                                    src="/logoNetFam.png" 
+                                    alt="NetFam Logo" 
+                                    className="w-70 h-70"
+                                    initial={{ rotate: 0 }}
+                                    whileHover={{ rotate: 180 }}
+                                    transition={{ duration: 0.5 }}
+                                    onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.onerror = null;
+                                        target.src = '/globe.svg';
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100
+                                    transition-all duration-300 ease-out text-white/80 text-sm font-medium">
+                            NetFam
                         </div>
                     </div>
+                </div>
                 </div>
 
                 {/* Navigation yang ditingkatkan */}

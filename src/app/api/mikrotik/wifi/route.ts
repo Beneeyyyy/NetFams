@@ -24,14 +24,14 @@ export async function POST(request: Request) {
         }
 
         // Update password
-        const passwordResult = await ssh.execCommand(`/interface wireless security-profiles set numbers=0 wpa2-pre-shared-key="${settings.password}"`);
+        const passwordResult = await ssh.execCommand(`/interface wireless security-profiles set numbers=1 wpa-pre-shared-key="${settings.password}"`);
         if (passwordResult.stderr) {
             throw new Error('Failed to update password: ' + passwordResult.stderr);
         }
 
         // Verify changes
-        const verifySSID = await ssh.execCommand('/interface wireless print value-list');
-        const verifyPassword = await ssh.execCommand('/interface wireless security-profiles print value-list');
+        const verifySSID = await ssh.execCommand('/interface wireless print');
+        const verifyPassword = await ssh.execCommand('/interface wireless security-profiles print');
 
         ssh.dispose();
 

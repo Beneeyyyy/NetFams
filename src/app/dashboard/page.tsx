@@ -14,7 +14,6 @@ import PageTransition from '../components/PageTransition';
 import SuccessModal from '../components/SuccessModal';
 import { MikrotikCredentials } from '@/types/mikrotiktypes';
 
-// Tambahkan state untuk status block
 interface Device {
     name: string;
     mac: string;
@@ -23,11 +22,12 @@ interface Device {
     ipAddress: string;
     hasQueue: boolean;
     isBlocked?: boolean;
-    queueType?: 'default' | 'custom' | 'unmanaged';  // Updated to include 'unmanaged'
+    queueType?: 'default' | 'custom' | 'unmanaged'; 
+    lastSeen: string;
 }
 
 export default function Dashboard() {
-    const [devices, setDevices] = useState<Device[]>([]); // Initialize as empty array
+    const [devices, setDevices] = useState<Device[]>([]);
 
     const [showModal, setShowModal] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<any>(null);
@@ -243,7 +243,6 @@ export default function Dashboard() {
         }
     };
 
-    // Modifikasi fungsi fetchConnectedUsers untuk mengembalikan fungsi cleanup
     const fetchConnectedUsers = async (credentials: MikrotikCredentials) => {
         let intervalId: NodeJS.Timeout;
 
@@ -293,7 +292,7 @@ export default function Dashboard() {
                     
                     // Jika line mengandung max-limit=
                     if (line.includes('max-limit=')) {
-                        const maxLimitMatch = line.match(/max-limit=([^/\s]+)\/([^/\s]+)/);
+                        const maxLimitMatch = line.match(/max-limit\s*=\s*([\dA-Za-z]+)\/([\dA-Za-z]+)/);
                         
                         if (maxLimitMatch) {
                             const download = maxLimitMatch[1];
@@ -408,11 +407,12 @@ export default function Dashboard() {
                 const blockedMacs = blockedData.blockedMacs || [];
 
                 // Update user mapping
-                const users = data.data.split('\r\n').slice(1).map((line: string) => {
+                const users = data.data.split('\r\n').slice(2).map((line: string) => {
                     const parts = line.split(/\s+/);
-                    const macAddress = parts[4];
-                    const hostName = customHostnames[macAddress] || parts[5] || 'Unknown';
-                    const ipAddress = parts[3] || '';
+                    const macAddress = parts[3];
+                    const hostName = customHostnames[macAddress] || parts[4] || 'Unknown';
+                    const ipAddress = parts[2] || '';
+                    const lastSeen = parts[7]
                     
                     // Cari data bandwidth dari queue
                     let speed = '';
@@ -438,6 +438,7 @@ export default function Dashboard() {
                             id: parts[1],
                             speed: speed,
                             ipAddress: ipAddress,
+                            lastSeen: lastSeen,
                             hasQueue: queueMap.has(ipAddress.toLowerCase()),
                             queueType: queueType,
                             isBlocked: blockedMacs.includes(macAddress)
@@ -536,96 +537,114 @@ export default function Dashboard() {
                     <div className="bg-white rounded-[32px] border-2 border-slate-200 overflow-hidden w-full max-w-4xl">
                         {/* Device Items */}
                         <div className="divide-y-2 divide-slate-100">
-                            <div className="grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-5 bg-slate-50 border-b-2 border-slate-200">
-                                <div className="text-sm font-medium text-slate-600">Device</div>
-                                <div className="text-sm font-medium text-slate-600">Speed</div>
-                                <div className="w-28 text-sm font-medium text-slate-600">Actions</div>
-                            </div>
-                            {devices.map((device) => (
-                                <div key={device.id} className="relative">
-                                    <div className={`grid grid-cols-[2fr,1fr,auto] gap-4 px-8 py-6 items-center 
-                                        ${device.isBlocked 
-                                            ? 'bg-red-50/90 border-l-4 border-red-500' 
-                                        : 'hover:bg-slate-50/50'
-                                        } transition-all duration-200`}>
-                                        <div>
-                                            <div className="font-medium text-lg flex items-center gap-3">
-                                                <span className={`transition-colors duration-200 ${
-                                                device.isBlocked ? 'text-red-600' : 'text-slate-800'
-                                            }`}>
-                                                {device.name}
-                                                </span>
-                                                {device.isBlocked && (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
-                                                        Blocked
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <div className={`text-sm ml-0 transition-colors duration-200 ${
-                                                device.isBlocked ? 'text-red-500/70' : 'text-slate-500'
-                                            }`}>
-                                                {device.mac}
-                                            </div>
-                                        </div>
-                                        <div className={`font-medium flex items-center transition-colors duration-200 ${
-                                            device.isBlocked ? 'text-red-600/90' : 'text-slate-700'
-                                        }`}>
-                                            {device.speed}
-                                            {device.hasQueue && (
-                                                <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                    device.isBlocked 
-                                                        ? 'bg-red-100/50 text-red-800' 
-                                                        : device.queueType === 'custom'
-                                                            ? 'bg-purple-100 text-purple-800'
-                                                            : device.queueType === 'default'
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : 'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                    {device.queueType === 'custom' ? 'Custom' : device.queueType === 'default' ? 'Default' : 'Unmanaged'}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="flex gap-1.5 w-28 justify-end">
-                                            <button 
-                                                onClick={() => openModal(device, 'rename')}
-                                                className={`p-2.5 rounded-xl transition-all duration-200 ${
-                                                    device.isBlocked
-                                                        ? 'hover:bg-red-100/50 text-red-600'
-                                                        : 'hover:bg-slate-100 text-slate-900'
-                                                }`}
-                                                title="Rename Device"
-                                            >
-                                                <Pencil size={20} strokeWidth={2.5} />
-                                            </button>
-                                            <button 
-                                                onClick={() => openModal(device, 'bandwidth')}
-                                                className={`p-2.5 rounded-xl transition-all duration-200 ${
-                                                    device.isBlocked
-                                                        ? 'hover:bg-red-100/50 text-red-600'
-                                                        : device.queueType === 'custom'
-                                                            ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
-                                                        : 'hover:bg-slate-100 text-slate-900'
-                                                }`}
-                                                title="Set Speed"
-                                            >
-                                                <Zap size={20} strokeWidth={2.5} />
-                                            </button>
-                                            <button 
-                                                onClick={() => handleBlockToggle(device)}
-                                                className={`p-2.5 rounded-xl transition-all duration-200 ${
-                                                    device.isBlocked 
-                                                        ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-                                                        : 'hover:bg-slate-100 text-slate-900'
-                                                }`}
-                                                title={device.isBlocked ? "Unblock Device" : "Block Device"}
-                                            >
-                                                <Ban size={20} strokeWidth={2.5} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+  {/* Header */}
+  <div className="grid grid-cols-[3fr,1fr,1fr,auto] gap-4 px-8 py-5 bg-slate-50 border-b-2 border-slate-200">
+    <div className="text-sm font-medium text-slate-600">Device</div>
+    <div className="text-sm font-medium text-slate-600">Time Use</div>
+    <div className="text-sm font-medium text-slate-600">Speed</div>
+    <div className="w-28 text-sm font-medium text-slate-600">Actions</div>
+  </div>
+
+  {/* Data Rows */}
+  {devices.map((device) => (
+    <div key={device.id} className="relative">
+      <div
+        className={`grid grid-cols-[3fr,1fr,1fr,auto] gap-4 px-8 py-6 items-center 
+          ${device.isBlocked 
+            ? 'bg-red-50/90 border-l-4 border-red-500' 
+            : 'hover:bg-slate-50/50'
+          } transition-all duration-200`}
+      >
+        {/* Device Name and MAC */}
+        <div>
+          <div className="font-medium text-lg flex items-center gap-3">
+            <span className={`transition-colors duration-200 ${
+              device.isBlocked ? 'text-red-600' : 'text-slate-800'
+            }`}>
+              {device.name}
+            </span>
+            {device.isBlocked && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                Blocked
+              </span>
+            )}
+          </div>
+          <div className={`text-sm ml-0 transition-colors duration-200 ${
+            device.isBlocked ? 'text-red-500/70' : 'text-slate-500'
+          }`}>
+            {device.mac}
+          </div>
+        </div>
+
+        {/* Last Seen */}
+        <div className={`text-sm transition-colors duration-200 ${
+          device.isBlocked ? 'text-red-600/90' : 'text-slate-700'
+        }`}>
+          {device.lastSeen} {/* Menampilkan nilai lastSeen */}
+        </div>
+
+        {/* Speed */}
+        <div className={`font-medium flex items-center transition-colors duration-200 ${
+          device.isBlocked ? 'text-red-600/90' : 'text-slate-700'
+        }`}>
+          {device.speed}
+          {device.hasQueue && (
+            <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+              device.isBlocked 
+                ? 'bg-red-100/50 text-red-800' 
+                : device.queueType === 'custom'
+                  ? 'bg-purple-100 text-purple-800'
+                  : device.queueType === 'default'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-gray-100 text-gray-800'
+            }`}>
+              {device.queueType === 'custom' ? 'Custom' : device.queueType === 'default' ? 'Default' : 'Unmanaged'}
+            </span>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-1.5 w-28 justify-end">
+          <button 
+            onClick={() => openModal(device, 'rename')}
+            className={`p-2.5 rounded-xl transition-all duration-200 ${
+              device.isBlocked
+                ? 'hover:bg-red-100/50 text-red-600'
+                : 'hover:bg-slate-100 text-slate-900'
+            }`}
+            title="Rename Device"
+          >
+            <Pencil size={20} strokeWidth={2.5} />
+          </button>
+          <button 
+            onClick={() => openModal(device, 'bandwidth')}
+            className={`p-2.5 rounded-xl transition-all duration-200 ${
+              device.isBlocked
+                ? 'hover:bg-red-100/50 text-red-600'
+                : device.queueType === 'custom'
+                  ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                  : 'hover:bg-slate-100 text-slate-900'
+            }`}
+            title="Set Speed"
+          >
+            <Zap size={20} strokeWidth={2.5} />
+          </button>
+          <button 
+            onClick={() => handleBlockToggle(device)}
+            className={`p-2.5 rounded-xl transition-all duration-200 ${
+              device.isBlocked 
+                ? 'bg-red-100 text-red-600 hover:bg-red-200' 
+                : 'hover:bg-slate-100 text-slate-900'
+            }`}
+            title={device.isBlocked ? "Unblock Device" : "Block Device"}
+          >
+            <Ban size={20} strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
                     </div>
                 </PageTransition>
             </div>

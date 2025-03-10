@@ -174,8 +174,6 @@ export async function POST(request: Request) {
     // Get current DHCP leases
     console.log('Mengeksekusi perintah: ip dhcp-server lease print');
     const result = await ssh.execCommand('ip dhcp-server lease print');
-    console.log('Hasil perintah:', result);
-    console.log('Output:', result.stdout);
     console.log('Error:', result.stderr);
     if (result.stderr) {
         console.error('Error saat mengeksekusi perintah:', result.stderr);
@@ -196,12 +194,13 @@ export async function POST(request: Request) {
 
     // Get wireless settings
     console.log('Retrieving wireless settings...');
-    const ssidResult = await ssh.execCommand('/interface wireless print value-list');
-    const securityResult = await ssh.execCommand('/interface wireless security-profiles print value-list');
+    const ssidResult = await ssh.execCommand('/interface wireless print');
+    const securityResult = await ssh.execCommand('/interface wireless security-profiles print');
     
     // Parse SSID and password
-    const ssid = ssidResult.stdout.match(/ssid=([^\n]+)/)?.[1] || '';
-    const password = securityResult.stdout.match(/wpa2-pre-shared-key=([^\n]+)/)?.[1] || '';
+    const ssid = ssidResult.stdout.match(/ssid="([^"]+)"/)?.[1] || '';
+    const password = securityResult.stdout.match(/wpa-pre-shared-key="([^"]+)"/)?.[1] || '';
+
     
     console.log('Wireless settings retrieved successfully');
 
